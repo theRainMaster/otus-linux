@@ -1,6 +1,27 @@
 # -*- mode: ruby -*-
 # vim: set ft=ruby :
 
+$script = <<-SCRIPT 
+echo "> Install RAID file."
+echo "> Display before installation."
+sudo lshw -short | grep disk
+mdadm --zero-superblock --force /dev/sd{b,c,d,e,f,g}
+mdadm --create --verbose /dev/md0 -l 6 -n 6 /dev/sd{b,c,d,e,f,g}
+echo "> Checking RAID System Information."
+cat /proc/mdstat
+mdadm -D /dev/md0
+echo "RAID INSTALL DONE."
+
+echo "Create mdadm file."
+mdadm --detail --scan --verbose
+mkdir /etc/mdadm/
+su echo "DEVICE partitions" > /etc/mdadm/mdadm.conf
+mdadm --detail --scan --verbose | awk '/ARRAY/ {print}' >> /etc/mdadm/mdadm.conf
+cp /etc/mdadm/mdadm.conf otuslinux:~/Myproject/otus/lab/disk-sistem/otus-linux/
+cat /etc/mdadm/mdadm.conf 
+echo "> MDADM FILE DONE."
+SCRIPT
+
 MACHINES = {
   :otuslinux => {
         :box_name => "centos/7",
@@ -25,13 +46,25 @@ MACHINES = {
                         :dfile => './sata4.vdi',
                         :size => 250, # Megabytes
                         :port => 4
+                },
+                :sata5 => {
+                        :dfile => './sata5.vdi',
+                        :size => 250, # Megabytes
+                        :port => 5
+                },
+                :sata6 => {
+                        :dfile => './sata6.vdi',
+                        :size => 250, # Megabytes
+                        :port => 6
                 }
 
 	}
 
 		
+		
   },
 }
+
 
 Vagrant.configure("2") do |config|
 
@@ -63,11 +96,16 @@ Vagrant.configure("2") do |config|
                      end
                   end
           end
+
  	  box.vm.provision "shell", inline: <<-SHELL
 	      mkdir -p ~root/.ssh
               cp ~vagrant/.ssh/auth* ~root/.ssh
 	      yum install -y mdadm smartmontools hdparm gdisk
+
+              echo "DONE"
   	  SHELL
+
+          box.vm.provision "shell", inline: $script
 
       end
   end
